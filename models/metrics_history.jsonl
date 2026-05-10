@@ -1,1 +1,1 @@
-{"date": "2026-05-10 03:53 UTC", "nodes": 10517, "features": 10, "train_size": 8413, "test_size": 2104, "rmse": 2.5202, "r2": 0.7359, "auc": 0.8912}
+{"date": "2026-05-10 04:18 UTC", "nodes": 10517, "features": 10, "train_size": 8413, "test_size": 2104, "rmse": 3.7287, "r2": 0.4219, "auc": 0.811}
