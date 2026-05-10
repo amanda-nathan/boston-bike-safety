@@ -122,6 +122,8 @@ def build_node_features(G, stress_df, bike_counts, total_counts):
         street_lanes[upper] = max(street_lanes.get(upper, 0), row["Num_Lanes"])
         street_width[upper] = max(street_width.get(upper, 0), row["Surface_Wd"])
 
+    node_street_names = {}
+
     for node in nodes:
         edges = G.edges(node, data=True)
         max_aadt = 0
@@ -132,11 +134,17 @@ def build_node_features(G, stress_df, bike_counts, total_counts):
         total_length = 0
         n_edges = 0
         has_oneway = 0
+        names = set()
 
         for u, v, data in edges:
             name = data.get("name", "")
             if isinstance(name, list):
+                for n in name:
+                    if n:
+                        names.add(n)
                 name = name[0] if name else ""
+            elif name:
+                names.add(name)
             upper = name.upper() if name else ""
 
             if upper in street_aadt:
@@ -155,6 +163,7 @@ def build_node_features(G, stress_df, bike_counts, total_counts):
         avg_length = total_length / max(n_edges, 1)
         neighbor_bike = neighbor_crash_sum(G, bike_counts, node, hops=2)
         neighbor_total = neighbor_crash_sum(G, total_counts, node, hops=2)
+        node_street_names[node] = " / ".join(sorted(names)[:3]) if names else ""
 
         features.append([
             max_aadt,
@@ -171,7 +180,7 @@ def build_node_features(G, stress_df, bike_counts, total_counts):
             total_counts.get(node, 0),
         ])
 
-    return np.array(features, dtype=np.float32)
+    return np.array(features, dtype=np.float32), node_street_names
 
 
 def build_edge_index(G):
@@ -192,7 +201,7 @@ def main():
     crashes = load_crashes()
 
     bike_counts, mv_counts, ped_counts, total_counts = assign_crashes_to_edges(G, crashes)
-    node_features = build_node_features(G, stress, bike_counts, total_counts)
+    node_features, node_street_names = build_node_features(G, stress, bike_counts, total_counts)
     edge_index = build_edge_index(G)
 
     nodes = list(G.nodes())
@@ -211,6 +220,7 @@ def main():
         "edge_index": edge_index,
         "nodes": nodes,
         "node_coords": {n: (G.nodes[n]["y"], G.nodes[n]["x"]) for n in G.nodes()},
+        "node_streets": node_street_names,
         "feature_names": [
             "aadt", "lts", "speed_limit", "lanes", "surface_width",
             "avg_edge_length", "degree", "has_oneway",
