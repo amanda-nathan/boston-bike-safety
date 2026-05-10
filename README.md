@@ -2,7 +2,7 @@
 
 GNN-based crash risk prediction for cyclists in the Hyde Park, Roslindale, Jamaica Plain, and West Roxbury neighborhoods of Boston.
 
-**[View the live risk map](https://amanda-nathan.github.io/boston-bike-safety/)** (updated nightly)
+**[View the live risk map](https://amanda-nathan.github.io/boston-bike-safety/)** (updated monthly)
 
 ## What this does
 
