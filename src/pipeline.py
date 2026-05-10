@@ -7,6 +7,7 @@ SCRIPTS = [
     "build_graph.py",
     "train_gnn.py",
     "build_site.py",
+    "build_readme.py",
 ]
 
 SRC = Path(__file__).resolve().parent
