@@ -152,9 +152,10 @@ def build_history_table(history):
         rows += (
             f"<tr>"
             f"<td>{entry['date']}</td>"
-            f"<td>{entry.get('auc', 'n/a')}</td>"
-            f"<td>{entry.get('rmse', 'n/a')}</td>"
-            f"<td>{entry.get('r2', 'n/a')}</td>"
+            f"<td>{entry.get('lr_auc', entry.get('auc', 'n/a'))}</td>"
+            f"<td>{entry.get('gnn_auc', 'n/a')}</td>"
+            f"<td>{entry.get('gnn_rmse', entry.get('rmse', 'n/a'))}</td>"
+            f"<td>{entry.get('gnn_r2', entry.get('r2', 'n/a'))}</td>"
             f"<td>{entry.get('nodes', 'n/a')}</td>"
             f"</tr>\n"
         )
@@ -162,7 +163,7 @@ def build_history_table(history):
 <div class="streets">
 <h3>Model Performance History</h3>
 <table>
-<tr><th>Date</th><th>AUC</th><th>RMSE</th><th>R2</th><th>Nodes</th></tr>
+<tr><th>Date</th><th>LR AUC</th><th>GNN AUC</th><th>GNN RMSE</th><th>GNN R2</th><th>Nodes</th></tr>
 {rows}
 </table>
 </div>"""
@@ -227,7 +228,7 @@ Severity and fatality information is not included in this dataset.</p>
 
 <script>
 var gnnMetrics = {{auc: "{gnn_metrics['auc']:.3f}", rmse: "{gnn_metrics['rmse']:.3f}", r2: "{gnn_metrics['r2']:.3f}"}};
-var lrMetrics = {{auc: "{lr_auc:.3f}", rmse: "n/a", r2: "n/a"}};
+var lrMetrics = {{auc: "{lr_auc:.3f}", rmse: "--", r2: "--"}};
 function showModel(m) {{
     document.getElementById('map-gnn').style.display = m === 'gnn' ? 'block' : 'none';
     document.getElementById('map-lr').style.display = m === 'lr' ? 'block' : 'none';
