@@ -212,7 +212,7 @@ def main():
     ped_per_node = np.array([ped_counts.get(n, 0) for n in nodes], dtype=np.float32)
 
     target = node_features[:, 10]  # bike crash count per node
-    features = node_features[:, :10]  # everything except crash counts
+    features = node_features[:, :8]  # road infrastructure only, no crash history
 
     graph_data = {
         "features": features,
@@ -227,7 +227,6 @@ def main():
         "feature_names": [
             "aadt", "lts", "speed_limit", "lanes", "surface_width",
             "avg_edge_length", "degree", "has_oneway",
-            "neighbor_bike_crashes", "neighbor_total_crashes",
         ],
     }
 
