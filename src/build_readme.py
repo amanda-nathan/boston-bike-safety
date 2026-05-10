@@ -125,9 +125,9 @@ where $\\text{{NeighborBikeCrashes}}_v = \\sum_{{u \\in \\mathcal{{N}}_2(v)}} c_
 
 The model uses three [GraphSAGE](https://arxiv.org/abs/1706.02216) convolution layers with a dual prediction head:
 
-$$\\mathbf{{h}}_v^{{(l+1)}} = \\sigma\\Big(\\mathbf{{W}}^{{(l)}} \\cdot \\text{{CONCAT}}\\big(\\mathbf{{h}}_v^{{(l)}},\\; \\text{{AGG}}(\\mathbf{{h}}_u^{{(l)}} : u \\in \\mathcal{{N}}(v))\\big)\\Big)$$
+$$\\mathbf{{h}}_v^{{(l+1)}} = \\text{{ReLU}}\\left(\\mathbf{{W}}^{{(l)}} \\cdot \\left[\\mathbf{{h}}_v^{{(l)}} \\| \\frac{{1}}{{|\\mathcal{{N}}(v)|}} \\sum_{{u \\in \\mathcal{{N}}(v)}} \\mathbf{{h}}_u^{{(l)}} \\right]\\right)$$
 
-where $\\text{{AGG}}$ is a mean aggregator over the node's neighbors, $\\sigma$ is ReLU, and $\\mathbf{{W}}^{{(l)}}$ are learned weight matrices. The layer dimensions are $10 \\to 64 \\to 32 \\to 16$ with dropout $p = 0.3$ and $p = 0.2$ between layers.
+The node's own embedding $\\mathbf{{h}}_v^{{(l)}}$ is concatenated ($\\|$) with the mean of its neighbors' embeddings, then multiplied by a learned weight matrix $\\mathbf{{W}}^{{(l)}}$. The layer dimensions are $10 \\to 64 \\to 32 \\to 16$ with dropout $p = 0.3$ and $p = 0.2$ between layers.
 
 The final node embedding $\\mathbf{{h}}_v^{{(3)}} \\in \\mathbb{{R}}^{{16}}$ feeds into two linear heads:
 
