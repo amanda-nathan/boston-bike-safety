@@ -1,0 +1,29 @@
+name: Monthly Pipeline
+
+on:
+  schedule:
+    - cron: "0 6 1 * *"  # 1st of every month, 1/2 AM Eastern
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - run: uv sync
+
+      - run: uv run python src/pipeline.py
+
+      - name: Push updated site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/ models/metrics_history.jsonl -f
+          git diff --cached --quiet || git commit -m "update risk map $(date -u +%Y-%m-%d)"
+          git push
