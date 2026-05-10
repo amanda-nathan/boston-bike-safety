@@ -8,7 +8,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.data import Data
-from torch_geometric.nn import GCNConv, SAGEConv
+from torch_geometric.nn import SAGEConv
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, roc_auc_score
 from sklearn.preprocessing import StandardScaler
@@ -54,71 +55,88 @@ def prepare_data(graph_data):
 
     binary_target = (target > 0).astype(np.float32)
 
-    x = torch.FloatTensor(features_scaled)
-    y_reg = torch.FloatTensor(target)
-    y_cls = torch.FloatTensor(binary_target)
-    ei = torch.LongTensor(edge_index)
-
-    data = Data(x=x, edge_index=ei, y_reg=y_reg, y_cls=y_cls)
-
-    n = x.shape[0]
+    n = features.shape[0]
     idx = np.arange(n)
     train_idx, test_idx = train_test_split(idx, test_size=0.2, random_state=42)
 
-    train_mask = torch.zeros(n, dtype=torch.bool)
-    test_mask = torch.zeros(n, dtype=torch.bool)
+    train_mask = np.zeros(n, dtype=bool)
+    test_mask = np.zeros(n, dtype=bool)
     train_mask[train_idx] = True
     test_mask[test_idx] = True
-    data.train_mask = train_mask
-    data.test_mask = test_mask
 
-    return data, scaler
+    return features_scaled, target, binary_target, edge_index, scaler, train_mask, test_mask
 
 
-def train(data, epochs=200):
-    model = BikeSafetyGNN(data.x.shape[1])
+def evaluate_binary(y_true, y_prob):
+    if len(np.unique(y_true)) > 1:
+        auc = roc_auc_score(y_true, y_prob)
+    else:
+        auc = float("nan")
+    return auc
+
+
+def train_logistic(features, binary_target, train_mask, test_mask):
+    X_train = features[train_mask]
+    X_test = features[test_mask]
+    y_train = binary_target[train_mask]
+    y_test = binary_target[test_mask]
+
+    model = LogisticRegression(max_iter=1000, class_weight="balanced", random_state=42)
+    model.fit(X_train, y_train)
+
+    train_prob = model.predict_proba(X_train)[:, 1]
+    test_prob = model.predict_proba(X_test)[:, 1]
+    all_prob = model.predict_proba(features)[:, 1]
+
+    auc = evaluate_binary(y_test, test_prob)
+
+    return model, all_prob, {"model": "logistic", "auc": auc}
+
+
+def train_gnn(features, target, binary_target, edge_index, train_mask, test_mask, epochs=200):
+    x = torch.FloatTensor(features)
+    y_reg = torch.FloatTensor(target)
+    y_cls = torch.FloatTensor(binary_target)
+    ei = torch.LongTensor(edge_index)
+    t_mask = torch.BoolTensor(train_mask)
+    te_mask = torch.BoolTensor(test_mask)
+
+    data = Data(x=x, edge_index=ei, y_reg=y_reg, y_cls=y_cls)
+    data.train_mask = t_mask
+    data.test_mask = te_mask
+
+    pos_weight = torch.tensor([(y_cls == 0).sum() / max((y_cls == 1).sum(), 1)])
+
+    model = BikeSafetyGNN(x.shape[1])
     optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=1e-4)
-
-    pos_weight = torch.tensor([(data.y_cls == 0).sum() / max((data.y_cls == 1).sum(), 1)])
 
     for epoch in range(epochs):
         model.train()
         optimizer.zero_grad()
-
         reg_pred, cls_pred = model(data.x, data.edge_index)
-
         reg_loss = F.mse_loss(reg_pred[data.train_mask], data.y_reg[data.train_mask])
         cls_loss = F.binary_cross_entropy_with_logits(
             cls_pred[data.train_mask], data.y_cls[data.train_mask], pos_weight=pos_weight
         )
-        loss = reg_loss + cls_loss
-
-        loss.backward()
+        (reg_loss + cls_loss).backward()
         optimizer.step()
 
-    return model
-
-
-def evaluate(model, data):
     model.eval()
     with torch.no_grad():
         reg_pred, cls_pred = model(data.x, data.edge_index)
+        all_risk = torch.sigmoid(cls_pred).numpy()
+        all_crash = reg_pred.numpy()
 
-    mask = data.test_mask
-    y_true_reg = data.y_reg[mask].numpy()
-    y_pred_reg = reg_pred[mask].numpy()
-    y_true_cls = data.y_cls[mask].numpy()
-    y_pred_cls = torch.sigmoid(cls_pred[mask]).numpy()
+    test_risk = all_risk[test_mask]
+    y_test = binary_target[test_mask]
+    y_test_reg = target[test_mask]
+    test_crash = all_crash[test_mask]
 
-    rmse = np.sqrt(mean_squared_error(y_true_reg, y_pred_reg))
-    r2 = r2_score(y_true_reg, y_pred_reg)
+    auc = evaluate_binary(y_test, test_risk)
+    rmse = np.sqrt(mean_squared_error(y_test_reg, test_crash))
+    r2 = r2_score(y_test_reg, test_crash)
 
-    if len(np.unique(y_true_cls)) > 1:
-        auc = roc_auc_score(y_true_cls, y_pred_cls)
-    else:
-        auc = float("nan")
-
-    return {"rmse": rmse, "r2": r2, "auc": auc}
+    return model, all_risk, all_crash, {"model": "gnn", "auc": auc, "rmse": rmse, "r2": r2}
 
 
 def main():
@@ -126,30 +144,39 @@ def main():
     np.random.seed(42)
 
     graph_data = load_graph()
-    data, scaler = prepare_data(graph_data)
+    features, target, binary_target, edge_index, scaler, train_mask, test_mask = prepare_data(graph_data)
 
-    model = train(data, epochs=200)
-    metrics = evaluate(model, data)
+    lr_model, lr_risk, lr_metrics = train_logistic(features, binary_target, train_mask, test_mask)
+    gnn_model, gnn_risk, gnn_crash, gnn_metrics = train_gnn(
+        features, target, binary_target, edge_index, train_mask, test_mask
+    )
 
-    print(f"RMSE: {metrics['rmse']:.4f}")
-    print(f"R2: {metrics['r2']:.4f}")
-    print(f"AUC: {metrics['auc']:.4f}")
+    print(f"Logistic Regression AUC: {lr_metrics['auc']:.4f}")
+    print(f"GNN AUC: {gnn_metrics['auc']:.4f}")
+    print(f"GNN RMSE: {gnn_metrics['rmse']:.4f}")
+    print(f"GNN R2: {gnn_metrics['r2']:.4f}")
 
     entry = {
         "date": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-        "nodes": int(data.x.shape[0]),
-        "features": int(data.x.shape[1]),
-        "train_size": int(data.train_mask.sum()),
-        "test_size": int(data.test_mask.sum()),
-        **{k: round(v, 4) for k, v in metrics.items()},
+        "nodes": int(features.shape[0]),
+        "features": int(features.shape[1]),
+        "lr_auc": round(lr_metrics["auc"], 4),
+        "gnn_auc": round(gnn_metrics["auc"], 4),
+        "gnn_rmse": round(gnn_metrics["rmse"], 4),
+        "gnn_r2": round(gnn_metrics["r2"], 4),
     }
     with open(METRICS_LOG, "a") as f:
         f.write(json.dumps(entry) + "\n")
 
+    with open(MODELS_DIR / "logistic.pkl", "wb") as f:
+        pickle.dump({"model": lr_model, "risk_scores": lr_risk}, f)
+
     torch.save({
-        "model_state": model.state_dict(),
-        "in_channels": data.x.shape[1],
-        "metrics": metrics,
+        "model_state": gnn_model.state_dict(),
+        "in_channels": features.shape[1],
+        "risk_scores": gnn_risk,
+        "crash_pred": gnn_crash,
+        "metrics": gnn_metrics,
     }, MODELS_DIR / "gnn_model.pt")
 
     with open(MODELS_DIR / "scaler.pkl", "wb") as f:

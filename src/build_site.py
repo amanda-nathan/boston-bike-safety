@@ -21,24 +21,15 @@ def load_predictions():
         graph_data = pickle.load(f)
 
     state = torch.load(MODELS_DIR / "gnn_model.pt", weights_only=False)
+    gnn_risk = state["risk_scores"]
+    gnn_crash = state["crash_pred"]
+    gnn_metrics = state["metrics"]
 
-    with open(MODELS_DIR / "scaler.pkl", "rb") as f:
-        scaler = pickle.load(f)
+    with open(MODELS_DIR / "logistic.pkl", "rb") as f:
+        lr_data = pickle.load(f)
+    lr_risk = lr_data["risk_scores"]
 
-    model = BikeSafetyGNN(state["in_channels"])
-    model.load_state_dict(state["model_state"])
-    model.eval()
-
-    features_scaled = scaler.transform(graph_data["features"]).astype(np.float32)
-    x = torch.FloatTensor(features_scaled)
-    ei = torch.LongTensor(graph_data["edge_index"])
-
-    with torch.no_grad():
-        reg_pred, cls_pred = model(x, ei)
-        risk_score = torch.sigmoid(cls_pred).numpy()
-        crash_pred = reg_pred.numpy()
-
-    return graph_data, risk_score, crash_pred, state["metrics"]
+    return graph_data, gnn_risk, gnn_crash, gnn_metrics, lr_risk
 
 
 def load_crash_stats():
@@ -58,7 +49,7 @@ def load_crash_stats():
     return date_range, len(rows), len(bike), street_counts
 
 
-def build_risk_map(graph_data, risk_score, crash_pred, metrics):
+def build_risk_map(graph_data, risk_score, crash_pred, metrics, label=""):
     coords = graph_data["node_coords"]
     nodes = graph_data["nodes"]
     features = graph_data["features"]
@@ -129,7 +120,7 @@ def build_risk_map(graph_data, risk_score, crash_pred, metrics):
     ))
 
     fig.update_layout(
-        title=f"Bike Crash Risk: Hyde Park to Forest Hills Corridor (updated {datetime.now().strftime('%Y-%m-%d')})",
+        title=f"{label} - Bike Crash Risk: Hyde Park to Forest Hills (updated {datetime.now().strftime('%Y-%m-%d')})",
         map=dict(
             style="carto-positron",
             center=dict(lat=42.296, lon=-71.112),
@@ -177,8 +168,9 @@ def build_history_table(history):
 </div>"""
 
 
-def build_html(fig, metrics):
-    map_html = fig.to_html(full_html=False, include_plotlyjs="cdn")
+def build_html(gnn_fig, lr_fig, gnn_metrics, lr_auc):
+    gnn_html = gnn_fig.to_html(full_html=False, include_plotlyjs="cdn")
+    lr_html = lr_fig.to_html(full_html=False, include_plotlyjs=False)
     history = load_metrics_history()
     history_table = build_history_table(history)
     date_range, total_crashes, total_bike, street_counts = load_crash_stats()
@@ -200,26 +192,53 @@ h1 {{ color: #333; }}
 .streets table {{ width: 100%; border-collapse: collapse; }}
 .streets th, .streets td {{ padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; }}
 .streets th {{ color: #666; font-weight: 600; }}
+.toggle {{ margin: 20px 0; }}
+.toggle button {{ padding: 10px 20px; border: 2px solid #2563eb; background: white; color: #2563eb; cursor: pointer; font-size: 14px; font-weight: 600; }}
+.toggle button.active {{ background: #2563eb; color: white; }}
+.toggle button:first-child {{ border-radius: 6px 0 0 6px; }}
+.toggle button:last-child {{ border-radius: 0 6px 6px 0; }}
 footer {{ color: #999; font-size: 12px; margin-top: 40px; }}
 </style>
 </head>
 <body>
 <div class="container">
 <h1>Bike Crash Risk: Hyde Park to Forest Hills Corridor</h1>
-<p>GNN-predicted crash risk for intersections in the Hyde Park / Roslindale / Jamaica Plain / West Roxbury corridor.
+<p>Predicted crash risk for intersections in the Hyde Park / Roslindale / Jamaica Plain / West Roxbury corridor.
 Red = higher risk. Hover for details. Trained on {total_crashes:,} crash dispatch records ({total_bike:,} bike) from {date_range}.</p>
 <p style="font-size: 13px; color: #666;">Crash data from Boston Vision Zero are dispatch records (when public safety responded to a crash location).
 Severity and fatality information is not included in this dataset.</p>
 
-<div class="metrics">
-<div class="metric"><div class="value">{metrics['auc']:.3f}</div><div class="label">AUC (classification)</div></div>
-<div class="metric"><div class="value">{metrics['rmse']:.3f}</div><div class="label">RMSE (crash count)</div></div>
-<div class="metric"><div class="value">{metrics['r2']:.3f}</div><div class="label">R-squared</div></div>
+<div class="toggle">
+<button class="active" onclick="showModel('gnn')">GNN (GraphSAGE)</button><button onclick="showModel('lr')">Logistic Regression</button>
 </div>
 
-<div class="map-container">
-{map_html}
+<div class="metrics">
+<div class="metric"><div class="value" id="auc-val">{gnn_metrics['auc']:.3f}</div><div class="label">AUC (classification)</div></div>
+<div class="metric"><div class="value" id="rmse-val">{gnn_metrics['rmse']:.3f}</div><div class="label">RMSE (crash count)</div></div>
+<div class="metric"><div class="value" id="r2-val">{gnn_metrics['r2']:.3f}</div><div class="label">R-squared</div></div>
 </div>
+
+<div class="map-container" id="map-gnn">
+{gnn_html}
+</div>
+<div class="map-container" id="map-lr" style="display:none;">
+{lr_html}
+</div>
+
+<script>
+var gnnMetrics = {{auc: "{gnn_metrics['auc']:.3f}", rmse: "{gnn_metrics['rmse']:.3f}", r2: "{gnn_metrics['r2']:.3f}"}};
+var lrMetrics = {{auc: "{lr_auc:.3f}", rmse: "n/a", r2: "n/a"}};
+function showModel(m) {{
+    document.getElementById('map-gnn').style.display = m === 'gnn' ? 'block' : 'none';
+    document.getElementById('map-lr').style.display = m === 'lr' ? 'block' : 'none';
+    var met = m === 'gnn' ? gnnMetrics : lrMetrics;
+    document.getElementById('auc-val').textContent = met.auc;
+    document.getElementById('rmse-val').textContent = met.rmse;
+    document.getElementById('r2-val').textContent = met.r2;
+    document.querySelectorAll('.toggle button').forEach(function(b) {{ b.classList.remove('active'); }});
+    event.target.classList.add('active');
+}}
+</script>
 
 <div class="streets">
 <h3>Study Corridor</h3>
@@ -269,9 +288,17 @@ Model: GraphSAGE [4] on road network from OpenStreetMap [5]. Updated monthly via
 
 
 def main():
-    graph_data, risk_score, crash_pred, metrics = load_predictions()
-    fig = build_risk_map(graph_data, risk_score, crash_pred, metrics)
-    build_html(fig, metrics)
+    graph_data, gnn_risk, gnn_crash, gnn_metrics, lr_risk = load_predictions()
+    gnn_fig = build_risk_map(graph_data, gnn_risk, gnn_crash, gnn_metrics, label="GNN (GraphSAGE)")
+    lr_fig = build_risk_map(graph_data, lr_risk, gnn_crash, gnn_metrics, label="Logistic Regression")
+
+    with open(MODELS_DIR / "logistic.pkl", "rb") as f:
+        lr_data = pickle.load(f)
+
+    metrics_log = load_metrics_history()
+    lr_auc = metrics_log[-1]["lr_auc"] if metrics_log else 0.0
+
+    build_html(gnn_fig, lr_fig, gnn_metrics, lr_auc)
 
 
 if __name__ == "__main__":
