@@ -1,0 +1,15 @@
+[project]
+name = "boston-bike-safety"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "osmnx>=2.1.0",
+    "pandas>=3.0.2",
+    "plotly>=6.7.0",
+    "pyarrow>=24.0.0",
+    "requests>=2.33.1",
+    "scikit-learn>=1.8.0",
+    "torch>=2.11.0",
+    "torch-geometric>=2.7.0",
+]
