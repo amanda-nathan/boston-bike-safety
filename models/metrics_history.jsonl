@@ -1,1 +1,2 @@
 {"date": "2026-05-10 04:38 UTC", "nodes": 10517, "features": 8, "lr_auc": 0.7397, "gnn_auc": 0.7279, "gnn_rmse": 5.6644, "gnn_r2": -0.3342}
+{"date": "2026-05-10 05:05 UTC", "nodes": 10517, "features": 8, "lr_auc": 0.7399, "gnn_auc": 0.7306, "gnn_rmse": 5.5422, "gnn_r2": -0.2772}
