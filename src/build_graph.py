@@ -198,7 +198,23 @@ def build_edge_index(G):
     return np.array([sources, targets], dtype=np.int64)
 
 
+def data_checksum():
+    import hashlib
+    h = hashlib.md5()
+    for f in sorted(RAW.glob("*.csv")):
+        h.update(f.read_bytes()[:1024])
+        h.update(str(f.stat().st_size).encode())
+    return h.hexdigest()
+
+
 def main():
+    cache = PROCESSED / "graph_data.pkl"
+    checksum_file = PROCESSED / "data_checksum.txt"
+
+    current_checksum = data_checksum()
+    if cache.exists() and checksum_file.exists() and checksum_file.read_text().strip() == current_checksum:
+        return
+
     G = load_road_graph()
     stress = load_bike_stress()
     crashes = load_crashes()
@@ -230,8 +246,10 @@ def main():
         ],
     }
 
-    with open(PROCESSED / "graph_data.pkl", "wb") as f:
+    with open(cache, "wb") as f:
         pickle.dump(graph_data, f)
+
+    checksum_file.write_text(current_checksum)
 
 
 if __name__ == "__main__":

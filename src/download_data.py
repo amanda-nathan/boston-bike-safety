@@ -20,9 +20,9 @@ DATASETS = {
 }
 
 
-def download(name, url):
+def download(name, url, force=False):
     path = DATA_DIR / name
-    if path.exists():
+    if path.exists() and not force:
         return
     resp = requests.get(url, stream=True, timeout=120)
     resp.raise_for_status()
@@ -32,5 +32,6 @@ def download(name, url):
 
 
 if __name__ == "__main__":
+    force = "--force" in __import__("sys").argv
     for name, url in DATASETS.items():
-        download(name, url)
+        download(name, url, force=force)

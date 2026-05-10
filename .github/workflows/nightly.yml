@@ -18,7 +18,11 @@ jobs:
 
       - run: uv sync
 
-      - run: uv run python src/pipeline.py
+      - run: uv run python src/download_data.py --force
+      - run: uv run python src/build_graph.py
+      - run: uv run python src/train_gnn.py
+      - run: uv run python src/build_site.py
+      - run: uv run python src/build_readme.py
 
       - name: Push updated site
         run: |
