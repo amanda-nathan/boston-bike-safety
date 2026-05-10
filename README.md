@@ -12,9 +12,9 @@ Predicts which intersections are most dangerous for cyclists along the commute c
 
 | Metric | Value |
 |--------|-------|
-| AUC | 0.7279 |
-| RMSE | 5.6644 |
-| R-squared | -0.3342 |
+| AUC | ? |
+| RMSE | ? |
+| R-squared | ? |
 
 ## Study corridor
 
