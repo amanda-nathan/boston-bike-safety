@@ -65,15 +65,18 @@ def build_risk_map(graph_data, risk_score, crash_pred, metrics):
     actual_bike = graph_data["target"]
     actual_mv = graph_data["mv_crashes"]
     actual_ped = graph_data["ped_crashes"]
-    feature_names = graph_data["feature_names"]
+    node_streets = graph_data.get("node_streets", {})
 
     lats = [coords[n][0] for n in nodes]
     lons = [coords[n][1] for n in nodes]
 
     hover_text = []
     for i, n in enumerate(nodes):
+        street = node_streets.get(n, "")
+        street_line = f"<b>{street}</b><br>" if street else ""
         text = (
-            f"<b>Risk Score: {risk_score[i]:.2f}</b><br>"
+            f"{street_line}"
+            f"Risk Score: {risk_score[i]:.2f}<br>"
             f"Predicted Bike Crashes: {crash_pred[i]:.1f}<br>"
             f"<br>"
             f"<b>Actual Crashes</b><br>"
