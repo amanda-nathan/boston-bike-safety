@@ -255,6 +255,7 @@ Severity and fatality information is not included in this dataset.</p>
 
 <footer>
 Model: GraphSAGE [4] on road network from OpenStreetMap [5]. Updated monthly via GitHub Actions.
+<a href="https://github.com/amanda-nathan/boston-bike-safety">Source code on GitHub</a>.
 </footer>
 </div>
 </body>
