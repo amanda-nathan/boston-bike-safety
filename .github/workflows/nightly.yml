@@ -24,6 +24,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/ models/metrics_history.jsonl -f
+          git add docs/ models/metrics_history.jsonl README.md -f
           git diff --cached --quiet || git commit -m "update risk map $(date -u +%Y-%m-%d)"
           git push
