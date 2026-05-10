@@ -28,7 +28,9 @@ def load_road_graph():
 
 
 def load_traffic():
-    df = pd.read_csv(RAW / "traffic_inventory_2024.csv", low_memory=False)
+    candidates = sorted(RAW.glob("traffic_inventory_*.csv"), reverse=True)
+    df = pd.read_csv(candidates[0], low_memory=False)
+    df["City"] = df["City"].astype(str)
     df = df[df["City"] == BOSTON_CITY]
     df["AADT"] = pd.to_numeric(df["AADT"], errors="coerce").fillna(0).astype(int)
     return df
@@ -36,6 +38,7 @@ def load_traffic():
 
 def load_bike_stress():
     df = pd.read_csv(RAW / "bike_stress.csv", low_memory=False)
+    df["City"] = df["City"].astype(str)
     df = df[df["City"] == BOSTON_CITY]
     df["LTS_define"] = pd.to_numeric(df["LTS_define"], errors="coerce").fillna(2).astype(int)
     df["AADT"] = pd.to_numeric(df["AADT"], errors="coerce").fillna(0).astype(int)
