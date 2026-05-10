@@ -7,3 +7,4 @@ wheels/
 .venv
 data/
 models/
+!models/metrics_history.jsonl
