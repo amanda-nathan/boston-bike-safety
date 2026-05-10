@@ -1,6 +1,6 @@
 import json
 import pickle
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -122,6 +122,9 @@ def evaluate(model, data):
 
 
 def main():
+    torch.manual_seed(42)
+    np.random.seed(42)
+
     graph_data = load_graph()
     data, scaler = prepare_data(graph_data)
 
@@ -133,7 +136,7 @@ def main():
     print(f"AUC: {metrics['auc']:.4f}")
 
     entry = {
-        "date": datetime.utcnow().strftime("%Y-%m-%d"),
+        "date": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "nodes": int(data.x.shape[0]),
         "features": int(data.x.shape[1]),
         "train_size": int(data.train_mask.sum()),
