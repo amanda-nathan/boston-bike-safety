@@ -4,7 +4,7 @@ Crash risk prediction for cyclists in the Hyde Park, Roslindale, Jamaica Plain, 
 
 **[View the live risk map](https://amanda-nathan.github.io/boston-bike-safety/)** (updated monthly)
 
-Data as of 2026-08-01. 42,684 crash records (3,896 bike) from 2015-2025. Current metrics are on the [live site](https://amanda-nathan.github.io/boston-bike-safety/).
+Data as of 2026-09-01. 42,684 crash records (3,896 bike) from 2015-2025. Current metrics are on the [live site](https://amanda-nathan.github.io/boston-bike-safety/).
 
 ## What this does
 

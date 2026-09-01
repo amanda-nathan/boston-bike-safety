@@ -2,3 +2,4 @@
 {"date": "2026-06-01 11:31 UTC", "nodes": 10551, "features": 8, "lr_auc": 0.7229, "gnn_auc": 0.7392, "gnn_rmse": 4.7013, "gnn_r2": -0.0064}
 {"date": "2026-07-01 09:51 UTC", "nodes": 10627, "features": 8, "lr_auc": 0.755, "gnn_auc": 0.7868, "gnn_rmse": 14.1626, "gnn_r2": 0.0032}
 {"date": "2026-08-01 08:23 UTC", "nodes": 10659, "features": 8, "lr_auc": 0.747, "gnn_auc": 0.7678, "gnn_rmse": 3.7759, "gnn_r2": 0.0971}
+{"date": "2026-09-01 11:12 UTC", "nodes": 10700, "features": 8, "lr_auc": 0.7691, "gnn_auc": 0.7941, "gnn_rmse": 5.2249, "gnn_r2": 0.0264}
